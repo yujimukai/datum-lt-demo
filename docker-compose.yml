@@ -1,0 +1,23 @@
+#------------------------------------------------------------------------------
+# 実行： docker-compose run tf_infra
+#        
+# 終了：docker-compose down
+#------------------------------------------------------------------------------
+version: "3.8"
+services:
+  # Terraform 環境
+  tf_lt:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    image: tf_lt
+    volumes:
+       - "./:/root/work"
+       - "$HOME/.aws:/root/.aws"
+    working_dir: /root/work
+#------------------------------------------------------------------------------
+# 参考：
+# https://docs.docker.com/compose/compose-file/
+# https://qiita.com/hiyuzawa/items/81490020568417d85e86#docker-compose
+# https://qiita.com/manaki/items/34053de1224ae3b7fb2b
+#------------------------------------------------------------------------------

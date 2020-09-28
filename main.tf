@@ -12,21 +12,15 @@ resource "aws_s3_bucket" "lt_demo" {
 //---------------------------------
 // emr
 //---------------------------------
-locals {
-  cluster_names = ["user1"]
-}
-
 resource "aws_emr_cluster" "cluster" {
-  for_each      = toset(local.cluster_names)
+  for_each      = toset(var.cluster_names)
   name          = each.value
   release_label = "emr-5.30.1"
   applications  = ["Spark"]
 
   ec2_attributes {
-    subnet_id                         = aws_subnet.emr_subnet.id
-    emr_managed_master_security_group = aws_security_group.emr_sg.id
-    emr_managed_slave_security_group  = aws_security_group.emr_sg.id
-    instance_profile                  = aws_iam_instance_profile.emr_profile.arn
+    subnet_id        = aws_subnet.emr_subnet.id
+    instance_profile = aws_iam_instance_profile.emr_ec2_profile.name
   }
 
   master_instance_group {
@@ -42,7 +36,7 @@ resource "aws_emr_cluster" "cluster" {
     teams = "backend"
     user  = each.value
   }
-  service_role = aws_iam_role.iam_emr_service_role.arn
+  service_role = aws_iam_role.emr_service_role.arn
 }
 
 //---------------------------------
@@ -65,56 +59,92 @@ resource "aws_subnet" "emr_subnet" {
     teams = "backend"
   }
 }
-//---------------------------------
-// security group
-//---------------------------------
-resource "aws_security_group" "emr_sg" {
-  name        = "emr_sg"
-  description = "Allow all traffic"
-  vpc_id      = aws_vpc.lt_demo.id
 
-  ingress {
-    description = "allow all trafic"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+//---------------------------------
+// route table
+//---------------------------------
+resource "aws_route_table" "emr_route_table" {
+  vpc_id = aws_vpc.lt_demo.id
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+  route {
+    ipv6_cidr_block = "::/0"
+    gateway_id      = aws_internet_gateway.emr_gw.id
   }
 
   tags = {
-    Name  = "emr_sg"
+    Name = "lt-remo"
+    tams = "backend"
+  }
+}
+
+resource "aws_route_table_association" "emr_subnet_routing" {
+  subnet_id      = aws_subnet.emr_subnet.id
+  route_table_id = aws_route_table.emr_route_table.id
+}
+
+//---------------------------------
+// internet_gateway
+//---------------------------------
+resource "aws_internet_gateway" "emr_gw" {
+  vpc_id = aws_vpc.lt_demo.id
+
+  tags = {
+    Name  = "lt-demo"
     teams = "backend"
   }
 }
+
 //---------------------------------
-// iam
+// iam (EMR)
 //---------------------------------
-data "aws_iam_policy_document" "emr_s3_fullaccess" {
+data "aws_iam_policy_document" "emr_assume_role_policy" {
   statement {
-    actions   = ["emr:*"]
-    resources = ["arn:aws:emr:::*"]
-  }
-  statement {
-    actions   = ["s3:*"]
-    resources = ["arn:aws:s3:::*"]
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["elasticmapreduce.amazonaws.com"]
+    }
   }
 }
 
-resource "aws_iam_role" "iam_emr_service_role" {
-  name               = "iam_emr_service_role"
-  assume_role_policy = data.aws_iam_policy_document.emr_s3_fullaccess.json
-  tags = {
-    tag-key = "tag-value"
+resource "aws_iam_role" "emr_service_role" {
+  name               = "LT_EMR_DefaultRole"
+  assume_role_policy = data.aws_iam_policy_document.emr_assume_role_policy.json
+}
+
+resource "aws_iam_role_policy_attachment" "emr_service_role" {
+  for_each   = toset(var.attach_policy_emr_role)
+  role       = aws_iam_role.emr_service_role.name
+  policy_arn = each.value
+}
+
+//---------------------------------
+// iam (EC2)
+//---------------------------------
+resource "aws_iam_role" "emr_ec2_role" {
+  name               = "LT_EMR_EC2_DefaultRole"
+  assume_role_policy = data.aws_iam_policy_document.ec2_assume_role_policy.json
+}
+
+
+data "aws_iam_policy_document" "ec2_assume_role_policy" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
   }
 }
 
-resource "aws_iam_instance_profile" "emr_profile" {
-  name = "emr_profile"
+resource "aws_iam_role_policy_attachment" "emr_ec2_role" {
+  role       = aws_iam_role.emr_ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceforEC2Role"
+}
+
+resource "aws_iam_instance_profile" "emr_ec2_profile" {
+  name = "emr-ec2-profile"
+  role = aws_iam_role.emr_ec2_role.name
 }

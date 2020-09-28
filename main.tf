@@ -51,8 +51,9 @@ resource "aws_vpc" "lt_demo" {
   }
 }
 resource "aws_subnet" "emr_subnet" {
-  vpc_id     = aws_vpc.lt_demo.id
-  cidr_block = "10.0.1.0/24"
+  vpc_id                  = aws_vpc.lt_demo.id
+  cidr_block              = "10.0.1.0/24"
+  map_public_ip_on_launch = true
 
   tags = {
     Name  = "emr_subnet"
@@ -67,7 +68,7 @@ resource "aws_route_table" "emr_route_table" {
   vpc_id = aws_vpc.lt_demo.id
 
   route {
-    ipv6_cidr_block = "::/0"
+    cidr_block = "0.0.0.0/0"
     gateway_id      = aws_internet_gateway.emr_gw.id
   }
 

@@ -1,7 +1,8 @@
 variable "cluster_names" {
   description = "user names list"
   default = [
-    "user1"
+    "user1",
+    "user2"
   ]
 }
 

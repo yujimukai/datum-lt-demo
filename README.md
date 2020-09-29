@@ -33,7 +33,7 @@ terraform apply
 
 今回はmasterへpushされたときに`terraform init`と`terraform apply`を自動で実行します。
 ## secrets
-AWSの認証情報はgit secretsで環境変数として定義しています。
+AWSの認証情報はgit secretsで環境変数として定義しています。適宜自分のアカウントの認証情報を設定してください。
 
 Setting->secretsで設定可能です(管理者権限が必要です)。
 

@@ -29,7 +29,7 @@ terraform apply
 ```
 
 # CI/CD
-[.guthub/workflows](https://github.com/yujimukai/datum-lt-demo/tree/master/.github/workflows)内の`.yml`ファイルで定義します。
+[.github/workflows](https://github.com/yujimukai/datum-lt-demo/tree/master/.github/workflows)内の`.yml`ファイルで定義します。
 
 今回はmasterへpushされたときに`terraform init`と`terraform apply`を自動で実行します。
 ## secrets
